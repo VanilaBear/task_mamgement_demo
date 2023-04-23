@@ -8,7 +8,7 @@ class TaskBasePermission(permissions.BasePermission):
         return request.method == "GET" or request.user.is_staff
 
 
-class TaskStopPermission(permissions.BasePermission):
+class TaskCancelPermission(permissions.BasePermission):
     """Permissions class for TaskViewSet stop operation"""
 
     def has_object_permission(self, request, view, obj):

@@ -37,9 +37,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_celery_results",
     "rest_framework.authtoken",
     "authentication",
-    "tasks",
+    "core",
+    "celery",
 ]
 
 MIDDLEWARE = [
@@ -131,3 +133,7 @@ REST_FRAMEWORK = {
 }
 
 TOKEN_EXPIRATION_TIME = timedelta(hours=10)
+
+# Celery configuration
+CELERY_BROKER_URL = "amqp://admin:password@localhost:5672//"
+CELERY_RESULT_BACKEND = "django-db"
