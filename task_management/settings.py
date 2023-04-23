@@ -37,8 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "rest_framework",
     "rest_framework.authtoken",
+    "authentication",
     "tasks",
 ]
 
@@ -127,9 +127,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAdminUser",
         "rest_framework.permissions.IsAuthenticated",
     ],
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.TokenAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("authentication.backends.ExpiringTokenAuthentication",),
 }
+
+TOKEN_EXPIRATION_TIME = timedelta(hours=10)

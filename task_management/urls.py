@@ -17,11 +17,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 
-from task_management.auth import CustomAuthToken
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", RedirectView.as_view(url="/admin/", permanent=True)),
     path("api/", include("tasks.urls")),
-    path("api/token/", CustomAuthToken.as_view()),
+    path("auth/", include("authentication.urls")),
 ]
