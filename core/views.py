@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from core.tasks import sample_task, TaskConfig
+from core.tasks import sample_task
 from core.constants import STATUS_CANCELED
 from core.models import TaskMeta
 from core.permissions import TaskBasePermission, TaskCancelPermission
@@ -47,8 +47,9 @@ class TaskViewSet(CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericV
 
     @action(detail=True, methods=["POST"], permission_classes=[IsAuthenticated, TaskCancelPermission])
     def cancel(self, request, *args, **kwargs):
+        task = self.get_object()
         try:
-            task = self.get_object()
             task.finish(STATUS_CANCELED)
-        except Exception as error:
-            pass
+            return Response({"message": f"Task {task.id} has been successfully canceled"}, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({"message": f"Can not cancel task", "task": self.get_serializer(task).data}, status=status.HTTP_409_CONFLICT)

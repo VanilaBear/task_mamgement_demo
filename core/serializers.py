@@ -9,7 +9,7 @@ class TaskErrorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TaskError
-        fields = ["message", "traceback", "created_at"]
+        fields = ["message", "created_at"]
 
 
 class TaskCreateSerializer(serializers.ModelSerializer):

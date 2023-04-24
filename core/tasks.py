@@ -1,5 +1,6 @@
 import logging
 import time
+import traceback
 import uuid
 
 from celery import shared_task
@@ -7,7 +8,7 @@ from django.utils.timezone import now
 
 from core.constants import STATUS_COMPLETED, STATUS_FAILED, STATUS_RETRY_PENDING
 from core.exceptions import TaskException, UnknownTaskException
-from core.models import TaskMeta
+from core.models import TaskMeta, TaskError
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ def sample_task(self, task_id: uuid, param1: int, param2: str, countdown: int = 
     except Exception as error:
         if self.request.retries < max_retries:
             logger.warning(f"Retrying {self.request.retries + 1} of {max_retries}...")
+            TaskError.objects.create(task_id=task_id, message=str(error), traceback=traceback.format_exc())
             TaskMeta.objects.filter(id=task_id).update(status=STATUS_RETRY_PENDING, finished_at=now())
             raise self.retry(exc=UnknownTaskException(f"{str(error)}"), max_retries=max_retries, countdown=countdown)
         TaskMeta.objects.filter(id=task_id).update(status=STATUS_FAILED, finished_at=now())
