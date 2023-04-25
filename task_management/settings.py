@@ -9,21 +9,31 @@ https://docs.djangoproject.com/en/3.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
-from datetime import timedelta
+import environ
+import os
+
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
 
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False)
+)
+
+# Set the project base directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Take environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "i0q_ye=sxiokl2%(e^8oqj8is3^t01r89$6da_6132oq!xi1!o"
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
@@ -37,7 +47,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_celery_results",
     "rest_framework.authtoken",
     "authentication",
     "core",
@@ -78,10 +87,18 @@ WSGI_APPLICATION = "task_management.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
+POSTGRES_USER = env("POSTGRES_USER")
+POSTGRES_PASSWORD = env("POSTGRES_PASSWORD")
+POSTGRES_DB = env("POSTGRES_DB")
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("POSTGRES_DB"),
+        "USER": env("POSTGRES_USER"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
+        "HOST": env("POSTGRES_HOST"),
+        "PORT": env("POSTGRES_PORT"),
     }
 }
 
@@ -132,8 +149,13 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("authentication.backends.ExpiringTokenAuthentication",),
 }
 
-TOKEN_EXPIRATION_TIME = timedelta(hours=10)
+TOKEN_EXPIRATION_TIME = int(env("TOKEN_EXPIRATION_TIME"))
 
-# Celery configuration
-CELERY_BROKER_URL = "amqp://admin:password@localhost:5672//"
-CELERY_RESULT_BACKEND = "django-db"
+RABBITMQ_DEFAULT_USER = env("RABBITMQ_DEFAULT_USER")
+RABBITMQ_DEFAULT_PASS = env("RABBITMQ_DEFAULT_PASS")
+RABBITMQ_HOST = env("RABBITMQ_HOST")
+
+REDIS_HOST = os.environ.get('REDIS_HOST')
+
+FLOWER_BASIC_AUTH = env("FLOWER_BASIC_AUTH")
+FLOWER_PORT = env("FLOWER_PORT")

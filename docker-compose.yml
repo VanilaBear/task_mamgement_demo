@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: app
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - rabbitmq
+      - redis
+    env_file:
+      - .env
+    networks:
+      - task_management
+
+  celery:
+    build: .
+    container_name: celery
+    command: sh -c "python manage.py migrate && celery -A task_management worker -l info"
+    depends_on:
+      - db
+      - rabbitmq
+      - redis
+    env_file:
+      - .env
+    networks:
+      - task_management
+
+  flower:
+    build: .
+    container_name: flower
+    command: sh -c "celery -A task_management flower"
+    depends_on:
+      - db
+      - rabbitmq
+      - redis
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    networks:
+      - task_management
+
+  db:
+    image: postgres:15.2
+    container_name: db
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - task_management
+
+  redis:
+    image: redis:7.0
+    container_name: redis
+    env_file:
+      - .env
+    volumes:
+      - redis_data:/data
+    networks:
+      - task_management
+
+  rabbitmq:
+    image: rabbitmq:3.11
+    container_name: rabbitmq
+    env_file:
+      - .env
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    networks:
+      - task_management
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  task_management:
+    driver: bridge

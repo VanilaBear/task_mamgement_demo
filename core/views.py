@@ -52,4 +52,7 @@ class TaskViewSet(CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericV
             task.finish(STATUS_CANCELED)
             return Response({"message": f"Task {task.id} has been successfully canceled"}, status=status.HTTP_200_OK)
         except Exception:
-            return Response({"message": f"Can not cancel task", "task": self.get_serializer(task).data}, status=status.HTTP_409_CONFLICT)
+            return Response(
+                {"message": f"Can not cancel task", "task": self.get_serializer(task).data},
+                status=status.HTTP_409_CONFLICT,
+            )
