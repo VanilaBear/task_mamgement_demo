@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                             ("COMPLETED", "Completed"),
                             ("FAILED", "Failed"),
                             ("RETRY_PENDING", "Retry Pending"),
-                            ("CANCELED", "Cancelled"),
+                            ("CANCELED", "Canceled"),
                         ],
                         default="PENDING",
                         max_length=20,

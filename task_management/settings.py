@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework.authtoken",
+    "django_filters",
     "drf_yasg",
     "authentication",
     "core",
@@ -135,6 +136,7 @@ LOGIN_REDIRECT_URL = "/swagger/"
 LOGOUT_REDIRECT_URL = "/"
 
 REST_FRAMEWORK = {
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAdminUser",
         "rest_framework.permissions.IsAuthenticated",

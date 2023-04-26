@@ -11,5 +11,5 @@ STATUS_CHOICES = [
     (STATUS_COMPLETED, "Completed"),
     (STATUS_FAILED, "Failed"),
     (STATUS_RETRY_PENDING, "Retry Pending"),
-    (STATUS_CANCELED, "Cancelled"),
+    (STATUS_CANCELED, "Canceled"),
 ]
