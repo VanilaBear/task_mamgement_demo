@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Tuple
 
 from django.contrib.auth.models import User
 from django.db import models
@@ -31,7 +32,7 @@ class TaskMeta(models.Model):
     name = models.CharField(max_length=36)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
 
-    next_available_status = {
+    available_statuses_map = {
         STATUS_PENDING: (STATUS_IN_PROGRESS, STATUS_CANCELED),
         STATUS_IN_PROGRESS: (
             STATUS_IN_PROGRESS,
@@ -61,7 +62,7 @@ class TaskMeta(models.Model):
         self.status = status
 
     def validate_next_status(self, status):
-        if status not in self.next_available_status.get(self.status, ()):
+        if status not in self.next_available_statuses:
             raise TaskException(f"Can not change status from {self.status} to {status} for the task {self.id}.")
 
     def finish(self, status):
@@ -77,6 +78,10 @@ class TaskMeta(models.Model):
     @property
     def is_in_progress(self) -> bool:
         return self.status == STATUS_IN_PROGRESS
+
+    @property
+    def next_available_statuses(self) -> Tuple[str, ...]:
+        return self.available_statuses_map.get(self.status, ())
 
 
 class TaskError(models.Model):

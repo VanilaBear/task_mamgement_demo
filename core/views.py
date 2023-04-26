@@ -15,7 +15,7 @@ from core.exceptions import TaskException
 from core.models import TaskMeta
 from core.permissions import TaskBasePermission, TaskCancelPermission
 from core.serializers import TaskCreateSerializer, TaskSerializer, TaskConfigurationSerializer
-from core.swagger_documentation import CREATE_TASK_REQUEST_BODY, CREATE_TASK_RESPONSES, CANCEL_TASK_RESPONSES
+from core.swagger_schemas import CREATE_TASK_REQUEST_BODY, CREATE_TASK_RESPONSES, CANCEL_TASK_RESPONSES
 from core.tasks import sample_task
 
 
@@ -51,7 +51,7 @@ class TaskViewSet(CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericV
 
         task_id = str(self.perform_create(task_serializer).id)
 
-        sample_task.apply_async(kwargs={"task_id": task_id, **parameters, **options}, task_id=task_id)
+        sample_task.apply_async(kwargs={**parameters, **options}, task_id=task_id)
 
         headers = self.get_success_headers(task_serializer.data)
         return Response(task_serializer.data, status=status.HTTP_201_CREATED, headers=headers)

@@ -37,7 +37,7 @@ class TaskSerializer(TaskCreateSerializer):
         data = super().to_representation(instance)
         if instance.status != STATUS_COMPLETED:
             data.pop("result", None)
-        if instance.status not in [STATUS_COMPLETED, STATUS_COMPLETED, STATUS_CANCELED]:
+        if instance.status not in [STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELED, STATUS_RETRY_PENDING]:
             data.pop("finished_at", None)
         if instance.status not in [STATUS_FAILED, STATUS_RETRY_PENDING]:
             data.pop("errors", None)

@@ -16,7 +16,10 @@ django-environ==0.10.0
 django-filter==23.1
 djangorestframework==3.14.0
 drf-yasg==1.21.5
+factory-boy==3.2.1
+Faker==18.5.1
 flower==1.2.0
+freezegun==1.2.2
 humanize==4.6.0
 idna==3.4
 inflection==0.5.1
