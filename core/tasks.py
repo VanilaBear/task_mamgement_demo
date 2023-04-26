@@ -1,23 +1,54 @@
 import logging
 import time
 import traceback
-import uuid
+from abc import ABC
 
-from celery import shared_task
-from django.utils.timezone import now
+from celery import shared_task, Task
 
 from core.constants import STATUS_COMPLETED, STATUS_FAILED, STATUS_RETRY_PENDING
 from core.exceptions import TaskException, UnknownTaskException
-from core.models import TaskMeta, TaskError
+from core.models import TaskMeta
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True)
-def sample_task(self, task_id: uuid, param1: int, param2: str, countdown: int = 60, max_retries: int = 0):
-    logger.info(f"Starting task execution [id: {task_id}; param1: {param1}, param2: {param2}] ...")
-    try:
-        task = TaskMeta.objects.get(id=task_id)
+class BaseSampleTask(Task, ABC):
+    """Base class for task processing"""
+
+    countdown: int = 60
+    max_retries: int = 0
+
+    def _get_task_meta(self) -> TaskMeta:
+        return TaskMeta.objects.get(id=self.task_id)
+
+    def _init_config(self, **kwargs):
+        """
+        Inits task configuration
+
+        :param kwargs: named parameters for task configuration
+        :return:
+        """
+        self.task_id = self.request.id
+        for attr in ["countdown", "max_retries"]:
+            if value := kwargs.get(attr):
+                setattr(self, attr, value)
+
+    def _log_attempt_number(self):
+        """Creates a log about attempt number"""
+
+        attempt_message = f"Attempt {self.request.retries + 1} of {self.max_retries + 1}..."
+        logger.warning(attempt_message) if self.request.retries else logger.info(attempt_message)
+
+    def _perform_task(self, param1: int, param2: str):
+        """
+        Makes some actions with task
+
+        :param param1: sleeping time in seconds
+        :param param2: string parameter
+        """
+
+        task = self._get_task_meta()
+
         task.start()
 
         if param2 == "raise exception before":
@@ -29,17 +60,49 @@ def sample_task(self, task_id: uuid, param1: int, param2: str, countdown: int = 
             raise Exception("Manual exception after execution.")
 
         task.finish(STATUS_COMPLETED)
-        logger.error(f"The task {task_id} has been successfully completed.")
+        logger.info(f"The task {self.task_id} has been successfully completed.")
 
+    def _handle_retry(self, error: str):
+        """
+        Handles retrying logic
+
+        :param error: error message string
+        """
+        logger.warning(f"Sending for retry ...")
+        task = self._get_task_meta()
+        task.add_error(error, traceback.format_exc())
+        task.finish(STATUS_RETRY_PENDING)
+        raise self.retry(exc=UnknownTaskException(f"{error}"), max_retries=self.max_retries, countdown=self.countdown)
+
+    def _handle_failure(self):
+        """Handles failure logic"""
+        task = self._get_task_meta()
+        task.finish(STATUS_FAILED)
+        logger.error(f"Failed to complete the task {self.task_id}.")
+
+
+@shared_task(bind=True, base=BaseSampleTask)
+def sample_task(self, param1: int, param2: str, **kwargs):
+    """
+    Processes task
+
+    :param self: task instance (provided by Celery)
+    :param param1: sleeping time in seconds
+    :param param2: string parameter
+    :param kwargs: named parameters for task configuration
+    """
+
+    self._init_config(**kwargs)
+    logger.info(f"Starting task execution [id: {self.task_id}; param1: {param1}, param2: {param2}] ...")
+    self._log_attempt_number()
+    try:
+        self._perform_task(param1, param2)
     except TaskMeta.DoesNotExist:
-        logger.warning(f"Task {task_id} not found")
+        logger.warning(f"Task {self.task_id} not found")
     except TaskException as known_error:
         logger.warning(str(known_error))
     except Exception as error:
-        if self.request.retries < max_retries:
-            logger.warning(f"Retrying {self.request.retries + 1} of {max_retries}...")
-            TaskError.objects.create(task_id=task_id, message=str(error), traceback=traceback.format_exc())
-            TaskMeta.objects.filter(id=task_id).update(status=STATUS_RETRY_PENDING, finished_at=now())
-            raise self.retry(exc=UnknownTaskException(f"{str(error)}"), max_retries=max_retries, countdown=countdown)
-        TaskMeta.objects.filter(id=task_id).update(status=STATUS_FAILED, finished_at=now())
-        logger.error(f"Failed to complete the task {task_id}.")
+        if self.request.retries < self.max_retries:
+            self._handle_retry(str(error))
+        else:
+            self._handle_failure()

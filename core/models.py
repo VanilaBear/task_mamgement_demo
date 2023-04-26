@@ -33,7 +33,13 @@ class TaskMeta(models.Model):
 
     next_available_status = {
         STATUS_PENDING: (STATUS_IN_PROGRESS, STATUS_CANCELED),
-        STATUS_IN_PROGRESS: (STATUS_FAILED, STATUS_RETRY_PENDING, STATUS_COMPLETED, STATUS_CANCELED),
+        STATUS_IN_PROGRESS: (
+            STATUS_IN_PROGRESS,
+            STATUS_FAILED,
+            STATUS_RETRY_PENDING,
+            STATUS_COMPLETED,
+            STATUS_CANCELED,
+        ),
         STATUS_RETRY_PENDING: (STATUS_IN_PROGRESS, STATUS_CANCELED),
     }
 
@@ -44,7 +50,7 @@ class TaskMeta(models.Model):
 
     def __str__(self) -> str:
         """String for representing the TaskMeta object."""
-        return f"{self.name} {self.task_id}"
+        return f"{self.name} {self.id}"
 
     def start(self):
         self.change_status(STATUS_IN_PROGRESS)
@@ -56,16 +62,21 @@ class TaskMeta(models.Model):
 
     def validate_next_status(self, status):
         if status not in self.next_available_status.get(self.status, ()):
-            raise TaskException(f"Can not change status from {self.status} to {status} for the task id {self.id}.")
+            raise TaskException(f"Can not change status from {self.status} to {status} for the task {self.id}.")
 
     def finish(self, status):
         self.change_status(status)
         self.finished_at = now()
+        self.result = "Some task's result might be here"
         self.save()
 
-    def set_task_id(self, task_id: uuid):
-        self.task_id = task_id
-        self.save()
+    def add_error(self, message: str, traceback: str):
+        """Stores related error information"""
+        TaskError.objects.create(task_id=self.id, message=message, traceback=traceback)
+
+    @property
+    def is_in_progress(self) -> bool:
+        return self.status == STATUS_IN_PROGRESS
 
 
 class TaskError(models.Model):
