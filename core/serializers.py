@@ -26,11 +26,11 @@ class TaskSerializer(TaskCreateSerializer):
     """Serializer for Task model instances"""
 
     errors = TaskErrorSerializer(many=True, read_only=True)
+    user = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:
         model = TaskMeta
-        fields = ["uuid", "name", "created_at", "finished_at", "status", "result", "errors"]
-        read_only_fields = ["uuid", "name", "created_at", "finished_at", "status", "result", "errors"]
+        fields = ["uuid", "name", "created_at", "finished_at", "status", "result", "errors", "user"]
 
     def to_representation(self, instance):
         """Custom representation for TaskMeta model instances that remove data depending on status"""
