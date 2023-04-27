@@ -22,6 +22,7 @@ class CustomAuthTokenTest(APITestCase):
     @freeze_time("2023-04-26 18:17:16")
     def test_refresh_token(self):
         """Tests the refresh_token method"""
+
         token = TokenFactory(user=self.user)
         refreshed_token = CustomAuthToken.refresh_token(self.user)
         self.assertFalse(Token.objects.filter(pk=token.pk).exists())
@@ -32,6 +33,7 @@ class CustomAuthTokenTest(APITestCase):
 
     def test_post(self):
         """Tests the post method"""
+
         url = "/auth/token/"
         data = {"username": self.user.username, "password": self.password}
         response = self.client.post(url, data=data)
@@ -56,6 +58,7 @@ class ExpiringTokenAuthenticationTest(TestCase):
     @override_settings(TOKEN_EXPIRATION_TIME=86400)
     def test_authenticate_credentials_valid_token(self):
         """Tests the authenticate_credentials method with a valid token"""
+
         result = ExpiringTokenAuthentication().authenticate_credentials(self.token.key)
         self.assertEqual(result, (self.user, self.token))
 
@@ -63,5 +66,6 @@ class ExpiringTokenAuthenticationTest(TestCase):
     @override_settings(TOKEN_EXPIRATION_TIME=86399)
     def test_authenticate_credentials_expired_token(self):
         """Tests the authenticate_credentials method with an expired token"""
+
         with self.assertRaises(AuthenticationFailed):
             ExpiringTokenAuthentication().authenticate_credentials(self.token.key)

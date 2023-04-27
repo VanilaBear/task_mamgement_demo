@@ -10,6 +10,7 @@ class CustomAuthToken(ObtainAuthToken):
     @staticmethod
     def refresh_token(user: User) -> Token:
         """Creates a new token"""
+
         token, created = Token.objects.get_or_create(user=user)
         if not created:
             token.delete()

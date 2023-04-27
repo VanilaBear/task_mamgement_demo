@@ -34,6 +34,7 @@ class TaskSerializer(TaskCreateSerializer):
 
     def to_representation(self, instance):
         """Custom representation for TaskMeta model instances that remove data depending on status"""
+
         data = super().to_representation(instance)
         if instance.status != STATUS_COMPLETED:
             data.pop("result", None)

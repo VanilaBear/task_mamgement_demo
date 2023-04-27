@@ -19,6 +19,8 @@ class BaseSampleTask(Task, ABC):
     max_retries: int = 0
 
     def _get_task_meta(self) -> TaskMeta:
+        """Returns associated TaskMeta instance"""
+
         return TaskMeta.objects.get(id=self.task_id)
 
     def _init_config(self, **kwargs):
@@ -28,6 +30,7 @@ class BaseSampleTask(Task, ABC):
         :param kwargs: named parameters for task configuration
         :return:
         """
+
         self.task_id = self.request.id
         for attr in ["countdown", "max_retries"]:
             if value := kwargs.get(attr):
@@ -68,6 +71,7 @@ class BaseSampleTask(Task, ABC):
 
         :param error: error message string
         """
+
         logger.warning(f"Sending for retry ...")
         task = self._get_task_meta()
         task.add_error(error, traceback.format_exc())
@@ -76,6 +80,7 @@ class BaseSampleTask(Task, ABC):
 
     def _handle_failure(self):
         """Handles failure logic"""
+
         task = self._get_task_meta()
         task.finish(STATUS_FAILED)
         logger.error(f"Failed to complete the task {self.task_id}.")

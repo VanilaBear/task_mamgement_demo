@@ -60,6 +60,7 @@ class TaskViewSet(CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericV
     @action(detail=True, methods=["POST"], permission_classes=[IsAuthenticated, TaskCancelPermission])
     def cancel(self, request, *args, **kwargs):
         """Cancels task's execution"""
+
         task = self.get_object()
         try:
             result = AsyncResult(task.id)

@@ -19,7 +19,7 @@ from core.constants import (
 )
 from core.exceptions import TaskException
 from core.models import TaskError, TaskMeta
-from core.tasks import BaseSampleTask
+from core.tasks import BaseSampleTask, sample_task
 from core.tests.factories import TaskMetaFactory, TaskErrorFactory
 
 
@@ -31,10 +31,12 @@ class TaskMetaTest(TestCase):
 
     def test_string_representation(self):
         """Tests string representation of the TaskMeta object"""
+
         self.assertEqual(str(self.task), f"{self.task.name} {self.task.id}")
 
     def test_start(self):
         """Tests the start method"""
+
         self.task.start()
         self.assertEqual(self.task.status, STATUS_IN_PROGRESS)
 
@@ -46,6 +48,7 @@ class TaskMetaTest(TestCase):
 
     def test_status_change_exception(self):
         """Tests the change_status method in case of exceptions"""
+
         new_status = "NON_EXISTENT_OR_UNAVAILABLE_STATUS"
         with self.assertRaises(TaskException):
             self.task.change_status(new_status)
@@ -53,6 +56,7 @@ class TaskMetaTest(TestCase):
     @freeze_time("2023-04-26 18:17:16")
     def test_finish(self):
         """Tests the finish method"""
+
         task = TaskMetaFactory(status=STATUS_IN_PROGRESS)
         task.finish(STATUS_COMPLETED)
         self.assertEqual(task.finished_at, timezone.now())
@@ -61,6 +65,7 @@ class TaskMetaTest(TestCase):
 
     def test_add_error(self):
         """Tests the add_error method"""
+
         message = "Error message"
         traceback = "Traceback"
         self.task.add_error(message, traceback)
@@ -70,6 +75,7 @@ class TaskMetaTest(TestCase):
 
     def test_is_in_progress(self):
         """Tests the is_in_progress property"""
+
         self.assertFalse(self.task.is_in_progress)
         self.task.status = STATUS_IN_PROGRESS
         self.task.save()
@@ -77,6 +83,7 @@ class TaskMetaTest(TestCase):
 
     def test_next_available_statuses(self):
         """Tests the next_available_statuses property"""
+
         self.assertEqual(self.task.next_available_statuses, (STATUS_IN_PROGRESS, STATUS_CANCELED))
 
         self.task.status = STATUS_IN_PROGRESS
@@ -158,6 +165,7 @@ class TaskViewSetTest(APITestCase):
     @patch("core.tasks.sample_task.apply_async")
     def test_create_task_success(self, mock_task_apply_async):
         """Tests the create method"""
+
         response = self.client_user.post(self.url, self.data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -176,6 +184,7 @@ class TaskViewSetTest(APITestCase):
 
     def test_retrieve_task(self):
         """Tests the retrieve method"""
+
         task_meta_common_kwargs = dict(user=self.user, finished_at=now(), result="result")
         pending_task = TaskMetaFactory(status=STATUS_PENDING, **task_meta_common_kwargs)
         in_progress_task = TaskMetaFactory(status=STATUS_IN_PROGRESS, **task_meta_common_kwargs)
@@ -196,6 +205,7 @@ class TaskViewSetTest(APITestCase):
 
     def test_retrieve_task_not_found(self):
         """Tests the retrieve method"""
+
         with self.subTest("Checks that there is no access to the task of another user"):
             task = TaskMetaFactory(user=self.user)
             url = f"{self.url}{str(task.id)}/"
@@ -211,6 +221,7 @@ class TaskViewSetTest(APITestCase):
 
     def test_list_tasks(self):
         """Tests the list method"""
+
         TaskMetaFactory(user=self.user)
         TaskMetaFactory(user=self.user)
         TaskMetaFactory(user=self.user_two)
@@ -233,6 +244,7 @@ class TaskViewSetTest(APITestCase):
     @patch("core.views.AsyncResult")
     def test_cancel_task(self, mock_async_result):
         """Tests the cancel method"""
+
         task = TaskMetaFactory(user=self.user)
         task_id = str(task.id)
         url = f"{self.url}{task_id}/cancel/"
@@ -383,3 +395,140 @@ class BaseSampleTaskTest(TestCase):
             sleep_mock.assert_called_once_with(1)
             task_instance_mock.finish.assert_called_not_called()
             mock_logger.assert_called_not_called()
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True)
+class TestSampleTask(TestCase):
+    """Test cases for the sample_task celery task"""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.task_args = (10, "test_param2")
+        cls.task_kwargs = {"this": "is", "just": "test"}
+        cls.task_id = "test_task_id"
+        cls.info_log = f"Starting task execution [id: {cls.task_id}; param1: 10, param2: test_param2] ..."
+        sample_task.task_id = cls.task_id
+
+    @patch("core.tasks.sample_task._init_config")
+    @patch("core.tasks.sample_task._log_attempt_number")
+    @patch("core.tasks.sample_task._perform_task")
+    @patch("core.tasks.sample_task._handle_retry")
+    @patch("core.tasks.sample_task._handle_failure")
+    @patch("core.tasks.logger")
+    def test_sample_task_success(
+        self,
+        mock_logger,
+        mock_handle_failure,
+        mock_handle_retry,
+        mock_perform_task,
+        mock_log_attempt_number,
+        mock_init_config,
+    ):
+        """Tests sample_task in positive case"""
+
+        sample_task.apply(args=self.task_args, kwargs=self.task_kwargs).get()
+
+        mock_init_config.assert_called_once_with(**self.task_kwargs)
+        mock_logger.info.assert_called_once_with(self.info_log)
+        mock_log_attempt_number.assert_called_once()
+        mock_perform_task.assert_called_once_with(*self.task_args)
+
+        mock_handle_retry.assert_not_called()
+        mock_handle_failure.assert_not_called()
+
+    @patch("core.tasks.sample_task._init_config")
+    @patch("core.tasks.sample_task._log_attempt_number")
+    @patch("core.tasks.sample_task._perform_task")
+    @patch("core.tasks.sample_task._handle_retry")
+    @patch("core.tasks.sample_task._handle_failure")
+    @patch("core.tasks.logger")
+    def test_sample_task_known_exception(
+        self,
+        mock_logger,
+        mock_handle_failure,
+        mock_handle_retry,
+        mock_perform_task,
+        mock_log_attempt_number,
+        mock_init_config,
+    ):
+        """Tests sample_task in case of known exceptions"""
+
+        with self.subTest("TaskMeta does not exist"):
+            mock_perform_task.side_effect = TaskMeta.DoesNotExist
+
+            sample_task.apply(args=self.task_args, kwargs=self.task_kwargs).get()
+
+            mock_logger.info.assert_called_once_with(self.info_log)
+            mock_init_config.assert_called_once_with(**self.task_kwargs)
+            mock_perform_task.assert_called_once_with(*self.task_args)
+            mock_logger.warning.assert_called_once_with(f"Task {self.task_id} not found")
+            mock_handle_retry.assert_not_called()
+            mock_handle_failure.assert_not_called()
+
+        with self.subTest("Conflict - TaskException"):
+            mock_perform_task.reset_mock()
+            mock_init_config.reset_mock()
+            mock_logger.reset_mock()
+            mock_log_attempt_number.reset_mock()
+            error_message = "is_error_message"
+            mock_perform_task.side_effect = TaskException(error_message)
+
+            sample_task.apply(args=self.task_args, kwargs=self.task_kwargs).get()
+
+            mock_init_config.assert_called_once_with(**self.task_kwargs)
+            mock_logger.info.assert_called_once_with(self.info_log)
+            mock_log_attempt_number.assert_called_once()
+            mock_perform_task.assert_called_once_with(*self.task_args)
+            mock_logger.warning.assert_called_once_with(error_message)
+            mock_handle_retry.assert_not_called()
+            mock_handle_failure.assert_not_called()
+
+    @patch("core.tasks.sample_task._init_config")
+    @patch("core.tasks.sample_task._log_attempt_number")
+    @patch("core.tasks.sample_task._perform_task")
+    @patch("core.tasks.sample_task._handle_retry")
+    @patch("core.tasks.sample_task._handle_failure")
+    @patch("core.tasks.logger")
+    def test_sample_task_unknown_exception(
+        self,
+        mock_logger,
+        mock_handle_failure,
+        mock_handle_retry,
+        mock_perform_task,
+        mock_log_attempt_number,
+        mock_init_config,
+    ):
+        """Tests sample_task in case of unknown exceptions"""
+
+        error_message = "error_message_123"
+        mock_perform_task.side_effect = Exception(error_message)
+
+        with self.subTest("No more retries"):
+            sample_task.max_retries = 0
+            sample_task.apply(args=self.task_args, kwargs=self.task_kwargs).get()
+
+            mock_init_config.assert_called_once_with(**self.task_kwargs)
+            mock_logger.info.assert_called_once_with(self.info_log)
+            mock_log_attempt_number.assert_called_once()
+            mock_perform_task.assert_called_once_with(*self.task_args)
+
+            mock_handle_retry.assert_not_called()
+            mock_handle_failure.assert_called_once()
+
+        with self.subTest("One more retry"):
+            sample_task.max_retries = 1
+            mock_perform_task.reset_mock()
+            mock_init_config.reset_mock()
+            mock_logger.reset_mock()
+            mock_log_attempt_number.reset_mock()
+            mock_handle_failure.reset_mock()
+
+            sample_task.apply(args=self.task_args, kwargs=self.task_kwargs).get()
+
+            mock_init_config.assert_called_once_with(**self.task_kwargs)
+            mock_logger.info.assert_called_once_with(self.info_log)
+            mock_log_attempt_number.assert_called_once()
+            mock_perform_task.assert_called_once_with(*self.task_args)
+
+            mock_handle_retry.assert_called_once_with(error_message)
+            mock_handle_failure.assert_not_called()

@@ -10,6 +10,7 @@ class ExpiringTokenAuthentication(TokenAuthentication):
 
     def authenticate_credentials(self, key):
         """Checks token's validity"""
+
         user, token = super().authenticate_credentials(key)
 
         if token.created < timezone.now() - timedelta(seconds=settings.TOKEN_EXPIRATION_TIME):

@@ -51,6 +51,7 @@ class TaskMeta(models.Model):
 
     def __str__(self) -> str:
         """String for representing the TaskMeta object."""
+
         return f"{self.name} {self.id}"
 
     def start(self):
@@ -73,6 +74,7 @@ class TaskMeta(models.Model):
 
     def add_error(self, message: str, traceback: str):
         """Stores related error information"""
+
         TaskError.objects.create(task_id=self.id, message=message, traceback=traceback)
 
     @property
