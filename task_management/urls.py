@@ -24,6 +24,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="index.html"), name="index"),
+    path("tasks/", TemplateView.as_view(template_name="tasks_list.html"), name="tasks_list"),
     path("swagger/", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger-ui"),
     path("admin/", admin.site.urls),
     path("api/", include("core.urls")),

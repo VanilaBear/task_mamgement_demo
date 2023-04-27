@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>Task management system [demo]</title>
+    </head>
+    <form id="csrf-form">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    </form>
+    <body>
+        <h1>Task List</h1>
+        <button onclick="refresh()">Refresh</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>User</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tasks-table"></tbody>
+        </table>
+        <li><a href="/">To main page</a></li>
+        <script>
+            const baseUrl = "/api/tasks/";
+
+            const cancelTask = async (taskId) => {
+                const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+                const response = await fetch(baseUrl + taskId + "/cancel/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "X-CSRFToken": csrfToken},
+                });
+                const data = await response.json();
+                alert(data.detail || data.message || response.status);
+                await refresh();
+            };
+
+            const refresh = async () => {
+                const response = await fetch(baseUrl);
+                const data = await response.json();
+                const tasksTable = document.getElementById("tasks-table");
+                tasksTable.innerHTML = "";
+                data.forEach((task) => {
+                    const row = document.createElement("tr");
+                    const nameCell = document.createElement("td");
+                    const statusCell = document.createElement("td");
+                    const userCell = document.createElement("td");
+                    const actionsCell = document.createElement("td");
+                    nameCell.innerText = task.name;
+                    statusCell.innerText = task.status;
+                    userCell.innerText = task.user;
+                    if (["PENDING", "IN_PROGRESS", "RETRY_PENDING"].indexOf(task.status) !== -1) {
+                        const cancelButton = document.createElement("button");
+                        cancelButton.innerText = "Cancel";
+                        cancelButton.onclick = () => cancelTask(task.uuid);
+                        actionsCell.appendChild(cancelButton);
+                    }
+                    row.appendChild(nameCell);
+                    row.appendChild(statusCell);
+                    row.appendChild(userCell);
+                    row.appendChild(actionsCell);
+                    tasksTable.appendChild(row);
+                });
+            };
+
+            refresh();
+        </script>
+    </body>
+</html>
