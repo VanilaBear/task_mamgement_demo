@@ -23,7 +23,7 @@ class TaskMetaFactory(factory.django.DjangoModelFactory):
 class TaskErrorFactory(factory.django.DjangoModelFactory):
     """TaskError model factory"""
 
-    task = TaskMetaFactory()
+    task = factory.SubFactory(TaskMetaFactory)
     message = factory.Faker("text")
     traceback = factory.Faker("text")
     created_at = now()

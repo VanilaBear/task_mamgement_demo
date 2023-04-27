@@ -21,8 +21,8 @@ class TokenFactory(factory.django.DjangoModelFactory):
     """Token model factory"""
 
     key = factory.LazyAttribute(lambda _: Token.generate_key())
-    user = UserFactory()
-    created = factory.LazyFunction(lambda _: timezone.now())
+    user = factory.SubFactory(UserFactory)
+    created = timezone.now()
 
     class Meta:
         model = Token
