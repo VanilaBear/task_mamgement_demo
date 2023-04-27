@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import traceback
+from unittest.mock import patch, MagicMock, PropertyMock
 
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -18,6 +19,7 @@ from core.constants import (
 )
 from core.exceptions import TaskException
 from core.models import TaskError, TaskMeta
+from core.tasks import BaseSampleTask
 from core.tests.factories import TaskMetaFactory, TaskErrorFactory
 
 
@@ -278,3 +280,106 @@ class TaskViewSetTest(APITestCase):
             mock_async_result.assert_called_once_with(task.id)
             mock_async_result.return_value.revoke.assert_called_once()
             self.assertEqual(task.status, STATUS_COMPLETED)
+
+
+class BaseSampleTaskTest(TestCase):
+    """Test cases for the BaseSampleTask class"""
+
+    def setUp(self):
+        self.task_meta = TaskMetaFactory()
+        self.sample_task = BaseSampleTask()
+        self.sample_task.task_id = self.task_meta.id
+
+    def test_get_task_meta(self):
+        task_meta = self.sample_task._get_task_meta()
+        self.assertEqual(task_meta, self.task_meta)
+
+    @patch("celery.app.task.Task.request", new_callable=PropertyMock)
+    def test_init_config(self, request_property_mock):
+        request_mock = MagicMock()
+        request_mock.id = self.task_meta.id
+        request_property_mock.return_value = request_mock
+
+        self.sample_task._init_config(countdown=120, max_retries=3)
+
+        self.assertEqual(self.sample_task.countdown, 120)
+        self.assertEqual(self.sample_task.max_retries, 3)
+        self.assertEqual(self.sample_task.task_id, self.task_meta.id)
+
+    @patch("core.tasks.logger")
+    @patch("celery.app.task.Task.request", new_callable=PropertyMock)
+    def test_log_attempt_number(self, request_property_mock, mock_logger):
+        self.sample_task.request.retries = 0
+        self.sample_task._log_attempt_number()
+        mock_logger.info.assert_called_with("Attempt 1 of 1...")
+
+        self.sample_task.request.retries = 1
+        self.sample_task.max_retries = 2
+        self.sample_task._log_attempt_number()
+        mock_logger.warning.assert_called_with("Attempt 2 of 3...")
+
+    @patch("core.tasks.BaseSampleTask.retry")
+    @patch("core.tasks.BaseSampleTask._get_task_meta")
+    @patch("core.tasks.logger")
+    @patch("celery.app.task.Task.request", new_callable=PropertyMock)
+    def test_handle_retry(self, request_property_mock, mock_logger, get_task_meta_mock, retry_mock):
+        task_instance_mock = MagicMock()
+        get_task_meta_mock.return_value = task_instance_mock
+
+        with self.assertRaises(Exception):
+            self.sample_task._handle_retry("Test error")
+            traceback_msg = traceback.format_exc()
+
+            mock_logger.warning.assert_called_once_with("Sending for retry ...")
+            task_instance_mock.add_error.assert_called_once_with("Test error", traceback_msg)
+            task_instance_mock.finish.assert_called_once_with(STATUS_RETRY_PENDING)
+            retry_mock.assert_called_once()
+
+    @patch("core.tasks.BaseSampleTask._get_task_meta")
+    @patch("core.tasks.logger")
+    @patch("celery.app.task.Task.request", new_callable=PropertyMock)
+    def test_handle_failure(self, request_property_mock, mock_logger, get_task_meta_mock):
+        task_instance_mock = MagicMock()
+        get_task_meta_mock.return_value = task_instance_mock
+
+        self.sample_task._handle_failure()
+
+        task_instance_mock.finish.assert_called_once_with(STATUS_FAILED)
+        mock_logger.error.assert_called_once_with(f"Failed to complete the task {self.task_meta.id}.")
+
+    @patch("core.tasks.BaseSampleTask._get_task_meta")
+    @patch("core.tasks.logger")
+    @patch("time.sleep")
+    @patch("celery.app.task.Task.request", new_callable=PropertyMock)
+    def test_perform_task_successful(self, request_property_mock, sleep_mock, mock_logger, get_task_meta_mock):
+        task_instance_mock = MagicMock()
+        get_task_meta_mock.return_value = task_instance_mock
+
+        self.sample_task._perform_task(1, "test_param2")
+
+        task_instance_mock.start.assert_called_once()
+        sleep_mock.assert_called_once_with(1)
+        task_instance_mock.finish.assert_called_once_with(STATUS_COMPLETED)
+        mock_logger.info.assert_called_once_with(f"The task {self.task_meta.id} has been successfully completed.")
+
+    @patch("core.tasks.BaseSampleTask._get_task_meta")
+    @patch("core.tasks.logger")
+    @patch("time.sleep")
+    @patch("celery.app.task.Task.request", new_callable=PropertyMock)
+    def test_perform_task_exception_before(self, request_property_mock, sleep_mock, mock_logger, get_task_meta_mock):
+        task_instance_mock = MagicMock()
+        get_task_meta_mock.return_value = task_instance_mock
+
+        with self.assertRaises(Exception):
+            self.sample_task._perform_task(1, "raise exception before")
+            task_instance_mock.start.assert_called_once()
+            sleep_mock.assert_called_not_called()
+            task_instance_mock.finish.assert_called_not_called()
+            mock_logger.assert_called_not_called()
+
+        with self.assertRaises(Exception):
+            self.sample_task._perform_task(1, "raise exception after")
+            task_instance_mock.start.assert_called_once()
+            sleep_mock.assert_called_once_with(1)
+            task_instance_mock.finish.assert_called_not_called()
+            mock_logger.assert_called_not_called()
