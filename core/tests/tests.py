@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.utils.timezone import now
 from freezegun import freeze_time
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 
 from authentication.tests.factories import UserFactory
 from core.constants import (
@@ -106,16 +106,31 @@ class TaskMetaTest(TestCase):
 class TaskViewSetTest(APITestCase):
     """Test cases for the TaskViewSet class"""
 
-    def setUp(self):
-        self.user = UserFactory()
-        self.client.force_authenticate(user=self.user)
-        self.url = "/api/tasks/"
-        self.data = {
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = UserFactory()
+        cls.user_two = UserFactory()
+        cls.user_admin = UserFactory(is_staff=True)
+
+        client_admin = APIClient()
+        client_admin.force_authenticate(user=cls.user_admin)
+        # client_admin.login(username=cls.admin_user, password=cls.admin_user)
+        cls.client_admin = client_admin
+
+        client_user = APIClient()
+        client_user.force_authenticate(user=cls.user)
+        cls.client_user = client_user
+
+        client_user_two = APIClient()
+        client_user_two.force_authenticate(user=cls.user_two)
+        cls.client_user_two = client_user_two
+
+        cls.url = "/api/tasks/"
+        cls.data = {
             "name": "task_name_test",
             "options": {"delay": 100, "retry": 2},
             "params": {"param1": 10, "param2": "param2"},
         }
-        self.task = TaskMetaFactory(user=self.user)
 
     @staticmethod
     def get_expected_data(task) -> dict:
@@ -141,7 +156,7 @@ class TaskViewSetTest(APITestCase):
     @patch("core.tasks.sample_task.apply_async")
     def test_create_task_success(self, mock_task_apply_async):
         """Tests the create method"""
-        response = self.client.post(self.url, self.data, format="json")
+        response = self.client_user.post(self.url, self.data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         task = TaskMeta.objects.filter(user=self.user, name=self.data["name"]).first()
@@ -173,6 +188,93 @@ class TaskViewSetTest(APITestCase):
         for task in (pending_task, in_progress_task, completed_task, failed_task, retry_pending_task, cancelled_task):
             with self.subTest(f"Tests the retrieve method for status {task.status}"):
                 url = f"{self.url}{str(task.id)}/"
-                response = self.client.get(url)
+                response = self.client_user.get(url)
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
                 self.assertDictEqual(response.data, self.get_expected_data(task))
+
+    def test_retrieve_task_not_found(self):
+        """Tests the retrieve method"""
+        with self.subTest("Checks that there is no access to the task of another user"):
+            task = TaskMetaFactory(user=self.user)
+            url = f"{self.url}{str(task.id)}/"
+            response = self.client_user_two.get(url)
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        with self.subTest("Checks retrieve method for non-existent task id"):
+            non_existent_task = TaskMetaFactory(user=self.user)
+            non_existent_task.delete()
+            url = f"{self.url}{str(non_existent_task.id)}/"
+            response = self.client_user.get(url)
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_list_tasks(self):
+        """Tests the list method"""
+        TaskMetaFactory(user=self.user)
+        TaskMetaFactory(user=self.user)
+        TaskMetaFactory(user=self.user_two)
+
+        response = self.client_admin.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+
+        response = self.client_user.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+        response = self.client_user_two.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    @patch("core.views.AsyncResult")
+    def test_cancel_task(self, mock_async_result):
+        """Tests the cancel method"""
+        task = TaskMetaFactory(user=self.user)
+        task_id = str(task.id)
+        url = f"{self.url}{task_id}/cancel/"
+
+        with self.subTest("Checks that there is no access to the task of another user"):
+            response = self.client_user_two.post(url)
+            task.refresh_from_db()
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            self.assertEqual(task.status, STATUS_PENDING)
+            mock_async_result.assert_not_called()
+
+        with self.subTest("Positive case"):
+            mock_async_result.reset_mock()
+
+            response = self.client_user.post(url)
+            task.refresh_from_db()
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, {"message": f"Task {task_id} has been successfully canceled"})
+            self.assertEqual(task.status, STATUS_CANCELED)
+            mock_async_result.assert_called_once_with(task.id)
+            mock_async_result.return_value.revoke.assert_called_once()
+
+        with self.subTest("Checks admin has access"):
+            mock_async_result.reset_mock()
+            task = TaskMetaFactory(user=self.user)
+            task_id = str(task.id)
+            url = f"{self.url}{task_id}/cancel/"
+
+            response = self.client_admin.post(url)
+            task.refresh_from_db()
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, {"message": f"Task {task_id} has been successfully canceled"})
+            self.assertEqual(task.status, STATUS_CANCELED)
+            mock_async_result.assert_called_once_with(task.id)
+            mock_async_result.return_value.revoke.assert_called_once()
+
+        with self.subTest("Task has already been finished"):
+            mock_async_result.reset_mock()
+            task = TaskMetaFactory(user=self.user, status=STATUS_COMPLETED)
+            url = f"{self.url}{str(task.id)}/cancel/"
+
+            response = self.client_user.post(url)
+            task.refresh_from_db()
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+            mock_async_result.assert_called_once_with(task.id)
+            mock_async_result.return_value.revoke.assert_called_once()
+            self.assertEqual(task.status, STATUS_COMPLETED)
