@@ -24,11 +24,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install Docker
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker docker-compose
-
     - name: Run application and database using docker-compose
       run: |
         docker-compose up -d
