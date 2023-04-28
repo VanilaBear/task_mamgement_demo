@@ -53,12 +53,14 @@ class TaskSerializer(TaskCreateSerializer):
 class TaskOptionsSerializer(serializers.Serializer):
     """Serializer for validating task options"""
 
-    countdown = serializers.IntegerField(min_value=0)
-    max_retries = serializers.IntegerField(min_value=0)
+    countdown = serializers.IntegerField(min_value=0, required=False)
+    max_retries = serializers.IntegerField(min_value=0, required=False)
 
     def to_internal_value(self, data):
-        data["countdown"] = data.pop("delay", None)
-        data["max_retries"] = data.pop("retry", None)
+        if "delay" in data:
+            data["countdown"] = data.pop("delay")
+        if "retry" in data:
+            data["max_retries"] = data.pop("retry")
         return super().to_internal_value(data)
 
 

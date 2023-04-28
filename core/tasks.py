@@ -33,8 +33,8 @@ class BaseSampleTask(Task, ABC):
 
         self.task_id = self.request.id
         for attr in ["countdown", "max_retries"]:
-            if value := kwargs.get(attr):
-                setattr(self, attr, value)
+            if attr in kwargs:
+                setattr(self, attr, kwargs.get(attr))
 
     def _log_attempt_number(self):
         """Creates a log about attempt number"""
