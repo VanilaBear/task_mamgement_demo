@@ -1,4 +1,4 @@
-from drf_yasg.openapi import Schema, TYPE_OBJECT, TYPE_INTEGER, TYPE_STRING, Response
+from drf_yasg.openapi import TYPE_INTEGER, TYPE_OBJECT, TYPE_STRING, Response, Schema
 from rest_framework import status
 
 from core.serializers import TaskCreateSerializer
@@ -36,7 +36,7 @@ CANCEL_TASK_RESPONSES = {
             },
         ),
         examples={
-            "application/json": {"message": f"Task 3fa85f64-5717-4562-b3fc-2c963f66afa6 has been successfully canceled"}
+            "application/json": {"message": "Task 3fa85f64-5717-4562-b3fc-2c963f66afa6 has been successfully canceled"}
         },
     ),
     status.HTTP_409_CONFLICT: Response(
@@ -49,7 +49,9 @@ CANCEL_TASK_RESPONSES = {
         ),
         examples={
             "application/json": {
-                "message": "Can not change status from CANCELED to CANCELED for the task 3fa85f64-5717-4562-b3fc-2c963f66afa6.",
+                "message": (
+                    "Can not change status from CANCELED to CANCELED for the task 3fa85f64-5717-4562-b3fc-2c963f66afa6."
+                ),
             }
         },
     ),

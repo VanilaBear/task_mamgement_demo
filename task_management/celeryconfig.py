@@ -1,4 +1,9 @@
-from task_management.settings import RABBITMQ_DEFAULT_USER, RABBITMQ_DEFAULT_PASS, RABBITMQ_HOST, REDIS_HOST
+from task_management.settings import (
+    RABBITMQ_DEFAULT_PASS,
+    RABBITMQ_DEFAULT_USER,
+    RABBITMQ_HOST,
+    REDIS_HOST,
+)
 
 broker_url = f"amqp://{RABBITMQ_DEFAULT_USER}:{RABBITMQ_DEFAULT_PASS}@{RABBITMQ_HOST}//"
 result_backend = f"redis://{REDIS_HOST}/0"

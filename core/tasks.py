@@ -3,7 +3,7 @@ import time
 import traceback
 from abc import ABC
 
-from celery import shared_task, Task
+from celery import Task, shared_task
 
 from core.constants import STATUS_COMPLETED, STATUS_FAILED, STATUS_RETRY_PENDING
 from core.exceptions import TaskException, UnknownTaskException
@@ -72,7 +72,7 @@ class BaseSampleTask(Task, ABC):
         :param error: error message string
         """
 
-        logger.warning(f"Sending for retry ...")
+        logger.warning("Sending for retry ...")
         task = self._get_task_meta()
         task.add_error(error, traceback.format_exc())
         task.finish(STATUS_RETRY_PENDING)

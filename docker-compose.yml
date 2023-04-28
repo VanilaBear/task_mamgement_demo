@@ -4,7 +4,6 @@ services:
   app:
     build: .
     container_name: app
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
     depends_on:
@@ -19,7 +18,7 @@ services:
   celery:
     build: .
     container_name: celery
-    command: sh -c "python manage.py migrate && celery -A task_management worker -l info"
+    command: sh -c "celery -A task_management worker -l info"
     depends_on:
       - db
       - rabbitmq

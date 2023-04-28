@@ -1,12 +1,11 @@
 from django.contrib import admin
-from django.contrib.auth.views import LogoutView, LoginView
-from django.urls import path, include
+from django.contrib.auth.views import LoginView, LogoutView
+from django.urls import include, path
 from django.views.generic import TemplateView
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 
 schema_view = get_schema_view(
     openapi.Info(

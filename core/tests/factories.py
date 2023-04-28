@@ -4,7 +4,7 @@ from django.utils.timezone import now
 
 from authentication.tests.factories import UserFactory
 from core.constants import STATUS_PENDING
-from core.models import TaskMeta, TaskError
+from core.models import TaskError, TaskMeta
 
 
 class TaskMetaFactory(factory.django.DjangoModelFactory):

@@ -14,6 +14,10 @@ Launch the app:
 ```shell
 docker-compose up
 ```
+Apply migrations:
+```shell
+docker-compose exec app python manage.py migratate
+```
 Create superuser:
 ```shell
 docker-compose exec app python manage.py createsuperuser

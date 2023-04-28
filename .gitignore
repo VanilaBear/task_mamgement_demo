@@ -1,8 +1,2 @@
-#Database
-*.sqlite3
-
-# virtualenv
 venv/
-
-# other
 .idea/

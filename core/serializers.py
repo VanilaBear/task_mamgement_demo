@@ -1,7 +1,12 @@
 from rest_framework import serializers
 
-from core.constants import STATUS_COMPLETED, STATUS_FAILED, STATUS_RETRY_PENDING, STATUS_CANCELED
-from core.models import TaskMeta, TaskError
+from core.constants import (
+    STATUS_CANCELED,
+    STATUS_COMPLETED,
+    STATUS_FAILED,
+    STATUS_RETRY_PENDING,
+)
+from core.models import TaskError, TaskMeta
 
 
 class TaskErrorSerializer(serializers.ModelSerializer):

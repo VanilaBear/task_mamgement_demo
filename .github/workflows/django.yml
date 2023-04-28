@@ -28,6 +28,18 @@ jobs:
       run: |
         docker-compose up -d
 
+    - name: Run isort
+      run: |
+        docker-compose exec -T app isort . --check
+
+    - name: Run flake8
+      run: |
+        docker-compose exec -T app flake8
+
+    - name: Check for missing migrations
+      run: |
+        docker-compose exec -T app python manage.py makemigrations --check --dry-run
+
     - name: Run tests
       run: |
         docker-compose exec -T app python manage.py test

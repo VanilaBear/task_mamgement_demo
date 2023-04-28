@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.test import override_settings, TestCase
+from django.test import TestCase, override_settings
 from django.utils.timezone import now
 from freezegun import freeze_time
 from rest_framework.authtoken.models import Token
@@ -8,7 +8,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.test import APITestCase
 
 from authentication.backends import ExpiringTokenAuthentication
-from authentication.tests.factories import UserFactory, TokenFactory
+from authentication.tests.factories import TokenFactory, UserFactory
 from authentication.views import CustomAuthToken
 
 

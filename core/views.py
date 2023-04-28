@@ -1,11 +1,11 @@
 from celery.result import AsyncResult
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_yasg.utils import swagger_auto_schema, no_body
+from drf_yasg.utils import no_body, swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, ListModelMixin
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -14,8 +14,16 @@ from core.constants import STATUS_CANCELED
 from core.exceptions import TaskException
 from core.models import TaskMeta
 from core.permissions import TaskBasePermission, TaskCancelPermission
-from core.serializers import TaskCreateSerializer, TaskSerializer, TaskConfigurationSerializer
-from core.swagger_schemas import CREATE_TASK_REQUEST_BODY, CREATE_TASK_RESPONSES, CANCEL_TASK_RESPONSES
+from core.serializers import (
+    TaskConfigurationSerializer,
+    TaskCreateSerializer,
+    TaskSerializer,
+)
+from core.swagger_schemas import (
+    CANCEL_TASK_RESPONSES,
+    CREATE_TASK_REQUEST_BODY,
+    CREATE_TASK_RESPONSES,
+)
 from core.tasks import sample_task
 
 

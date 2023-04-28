@@ -1,26 +1,26 @@
 import traceback
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.utils.timezone import now
 from freezegun import freeze_time
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 
 from authentication.tests.factories import UserFactory
 from core.constants import (
-    STATUS_IN_PROGRESS,
-    STATUS_COMPLETED,
     STATUS_CANCELED,
+    STATUS_COMPLETED,
     STATUS_FAILED,
-    STATUS_RETRY_PENDING,
+    STATUS_IN_PROGRESS,
     STATUS_PENDING,
+    STATUS_RETRY_PENDING,
 )
 from core.exceptions import TaskException
 from core.models import TaskError, TaskMeta
 from core.tasks import BaseSampleTask, sample_task
-from core.tests.factories import TaskMetaFactory, TaskErrorFactory
+from core.tests.factories import TaskErrorFactory, TaskMetaFactory
 
 
 class TaskMetaTest(TestCase):

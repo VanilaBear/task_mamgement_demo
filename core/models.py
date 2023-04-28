@@ -7,13 +7,13 @@ from django.db import models
 from django.utils.timezone import now
 
 from core.constants import (
-    STATUS_CHOICES,
-    STATUS_PENDING,
-    STATUS_IN_PROGRESS,
-    STATUS_COMPLETED,
-    STATUS_RETRY_PENDING,
     STATUS_CANCELED,
+    STATUS_CHOICES,
+    STATUS_COMPLETED,
     STATUS_FAILED,
+    STATUS_IN_PROGRESS,
+    STATUS_PENDING,
+    STATUS_RETRY_PENDING,
 )
 from core.exceptions import TaskException
 
